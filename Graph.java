@@ -252,7 +252,6 @@ public class Graph implements GraphInterface<Town, Road > {
 		       }
 		       return null;
 		
-		
 	}
 
 	/**
@@ -319,7 +318,7 @@ public class Graph implements GraphInterface<Town, Road > {
      */
 	@Override
 	public void dijkstraShortestPath(Town sourceVertex) {
-
+		
 		shortestPath = new ArrayList<String>();
 		Queue<Town> vertexQueue = new PriorityQueue<Town>();
 		HashSet<Town> containedVertices = new HashSet<Town>();
@@ -327,11 +326,16 @@ public class Graph implements GraphInterface<Town, Road > {
 		HashSet<Road> containedEdges = new HashSet<Road>();
 		HashSet<Road> possibleEdges = new HashSet<Road>();
 		HashSet<Road> currentEdges = new HashSet<Road>();
+		int minWeight = 999999999;
+		Road minimum = null;
 		
+		System.out.println(shortestPath);
 		shortestPath.add(sourceVertex.getName() + " via NONE to " + sourceVertex.getName() + " 0 mi");
 		containedVertices.add(sourceVertex);
 		vertexQueue.add(sourceVertex);
 		currentEdges = (HashSet<Road>) edgesOf(sourceVertex);
+		
+//		add all paths from source
 		for(Road r: currentEdges) {
 			Town destination;
 			if(r.getSource().equals(sourceVertex)) 
@@ -340,40 +344,50 @@ public class Graph implements GraphInterface<Town, Road > {
 				destination = r.getSource();
 			shortestPath.add(sourceVertex.getName() + " via " + r.getName() +
 					" to " + destination.getName() + " " + r.getWeight() + " mi");
-           }
-         
+		}
+		
+//		exit loop when we have passed through all contained vertices or the vertex queue is 0
 		while((containedVertices.size() != towns.size()) && vertexQueue.size() >= 0) {
-			for(Town t: vertexQueue) {
-				currentEdges = (HashSet<Road>) edgesOf(t);
-				int minWeight = 999999999;
-				Road minimum = null;				
-				for(Road r: currentEdges) {					
-					if((r.getWeight() < minWeight) && !containedEdges.contains(r)
+			for(Town t: vertexQueue) {	
+				minWeight = 99999;
+				minimum = null;
+//				get edges of current town
+				currentEdges = (HashSet<Road>) edgesOf(t);				
+				for(Road r: currentEdges) {	
+//					if weight is less than the minimum and if road is not already in contained edges set road to minimum
+					if ((r.getWeight() < minWeight) && !containedEdges.contains(r)
 							&& !(containedVertices.contains(r.getSource())
-									&& containedVertices.contains(r.getDestination()))) {
+							&& containedVertices.contains(r.getDestination()))) {
 						minimum = r;
 						minWeight = r.getWeight();
 					}
 				}
-				if(minimum != null) {
-					if(minimum.getSource().equals(t)) possibleEdges.add(minimum);
-					else possibleEdges.add(new Road(minimum.getDestination(), minimum.getSource(),
+				
+//				if minimum is found add to possible edges else add to a to be removed hash
+				if(minimum != null) {		
+					if(minimum.getSource().equals(t)) 
+						possibleEdges.add(minimum);
+					else 
+						possibleEdges.add(new Road(minimum.getDestination(), minimum.getSource(),
 							minimum.getWeight(), minimum.getName()));
 				}
-				else toBeRemoved.add(t);
+				
+				else 
+					toBeRemoved.add(t);
 			}
 			
+//			remove towns to be removed from the vertex queue
 			for(Town town: toBeRemoved) {
 				vertexQueue.remove(town);
 			}
-              
-			int min = 999999;
-			Road minimum = null;
 			
+//			find lowest weight of edges
+			minWeight = 999999;
+			minimum = null;		
 			for(Road r: possibleEdges) {
-				if(r.getWeight() < min) {
+				if(r.getWeight() < minWeight) {
 					minimum = r;
-					min = r.getWeight();
+					minWeight = r.getWeight();
 				}
 			}
 			
@@ -381,59 +395,70 @@ public class Graph implements GraphInterface<Town, Road > {
 				
 				containedEdges.add(minimum);
 				Town newNode = minimum.getDestination();
+//				add destination of minimum to contained vertices and new node
 				containedVertices.add(newNode);
 				vertexQueue.add(newNode);
 				currentEdges = (HashSet<Road>) edgesOf(newNode);
 				
+//				iterate through edges of min destination
 				for(Road road: currentEdges) {
 					String nextNodeName;
-					if(road.getSource().equals(newNode))
+//					if the source of the current road is the min then next node name is the destination and vice versa
+					if(road.getSource().equals(newNode)) 
 						nextNodeName = road.getDestination().getName();
+					
 					else 
 						nextNodeName = road.getSource().getName();
+						
 					
 					int notationIndex = -1;
+//					get index of first substring with next node name as destination
+					
 					for(int i = 0; i < shortestPath.size(); i++) {
 						if(shortestPath.get(i).contains("to " + nextNodeName)) {
 							notationIndex = i;
 							break;
-                           }
-                       }
+						}
+					}
 					
-					if(notationIndex == -1) {						
-                           for(int i = 0; i < shortestPath.size(); i++) {
-                        	   if(shortestPath.get(i).contains("to " + newNode.getName())) {
-                        		   break;
-                               }
-                           }
-                          
-                           shortestPath.add(newNode.getName() + " via " + road.getName() + " to " + nextNodeName + " "
+//					if the index was not found then add path from new node to next node
+					if(notationIndex == -1) {												
+						shortestPath.add(newNode.getName() + " via " + road.getName() + " to " + nextNodeName + " "
                         		   + (road.getWeight()) + " mi");
 					}
+//					if index was found
 					else {
 						
-						int neighborWeight = getTotalWeight(shortestPath.get(notationIndex), sourceVertex);
-						int newNodeWeight = -1;
+						boolean newNodeDest = true;
+//						if shortest path doesnt contain new node as a destination then remove the original nextNode path
+//						and add path from newNode to nextNode
 						for(int i = 0; i < shortestPath.size(); i++) {
 							if(shortestPath.get(i).contains("to " + newNode.getName())) {
-								newNodeWeight = getTotalWeight(shortestPath.get(i), sourceVertex);
+								newNodeDest = false;		
 								break;
 							}
-						}
-               
-						if(newNodeWeight + road.getWeight() < neighborWeight) {
+						}						
+
+						if(newNodeDest) {
 							shortestPath.remove(notationIndex);
 							shortestPath.add(newNode.getName() + " via " + road.getName() +
 									" to " + nextNodeName + " " + (road.getWeight()) + " mi");
 						}
 					}
 				}
+			
+			
 			}
-			else break;
+//			if we dont have any possible edges then break
+			else 
+				break;
 			possibleEdges.clear();
 			toBeRemoved.clear();
+
 		}
 	}
+	
+	
 	
 	private int getTotalWeight(String string, Town sourceVertex) {
 		// TODO Auto-generated method stub
